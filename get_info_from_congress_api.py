@@ -34,7 +34,7 @@ def load_votations(cached = True):
         url = 'http://www.camara.gov.br/SitCamaraWS/Proposicoes.asmx/' + \
                 'ObterVotacaoProposicao?tipo=%s&numero=%s&ano=%s' % (pType, pId, pYear)
         page = requests.get(url)
-        xml = page.content
+        xml = unidecode( page.content.decode('utf8') )
         tree = ET.fromstring(xml)
 
         for xml_data in tree[3]:
