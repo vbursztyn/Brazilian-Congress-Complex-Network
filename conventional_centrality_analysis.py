@@ -71,4 +71,4 @@ metrics = ['name', 'diap', 'betweenness', 'closeness', 'degree', 'katz', 'pagera
 df = pd.DataFrame(zip(vertex_to_name.values(), diap, degree.a.tolist(), betweeness[0].a.tolist(), closeness.a.tolist(), katz.a.tolist(), 
                       pagerank.a.tolist()), columns = metrics)
 
-df.sort('Page', ascending=True)[:30]
+df.sort('Pagerank', ascending=True)[:30]
