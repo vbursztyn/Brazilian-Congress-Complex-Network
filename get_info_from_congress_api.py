@@ -9,8 +9,8 @@ import pandas as pd
 def load_votations(cached = True):
 
     if cached == True:
-        with open('data.pck', 'r') as fp:
-            return pickle.read(fp)
+        with open('data.pck', 'rb') as fp:
+            return pickle.load(fp)
 
     # if not cached
 
@@ -80,7 +80,7 @@ def load_votations(cached = True):
         zip(congressmen.keys(), zip(*congressmen.values())[0], zip(*congressmen.values())[1]),
         columns = ['congressman', 'party', 'state'] ).set_index('congressman')
 
-    with open('data.pck', 'w') as fp:
+    with open('data.pck', 'wb') as fp:
         pickle.dump( (df_amends, df_parties_votings, df_congressmen_votings, df_congressmen), fp )
 
     return (df_amends, df_parties_votings, df_congressmen_votings, df_congressmen)
