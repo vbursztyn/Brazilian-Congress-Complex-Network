@@ -129,7 +129,7 @@ def top_centralities(g, weights, GT_to_congressmen):
 
 
 def community_detection(g, weights, GT_to_congressmen):
-	spins = community_structure(g, 10000, 20, gamma=0.7, t_range=(5.0, 0.01), weight=weights)
+	spins = community_structure(g, 1000, 2, gamma=0.7, t_range=(5.0, 0.01), weight=weights)
 	communities = dict()
 	for i, c in enumerate(spins.get_array()):
 		if c not in communities:
