@@ -81,13 +81,71 @@ class Neo4jPersistence():
 				pickle.dump(records, open('codonators_net.p','wb'))
 
 
+def get_sorted(values_array, normalization_factor=None):
+	values_dict = dict()
+	for i,value in enumerate(values_array):
+		if not normalization_factor:
+			values_dict[i] = value
+		else:
+			values_dict[i] = value / float(normalization_factor)
+	return sorted(values_dict.items(), key=lambda x: x[1], reverse=True)
+
+
+def top_centralities(g, weights, GT_to_congressmen):
+	# 14+7+4+5+5+5+3+3+1+2+2+3+2+2+1+1+1+1
+	N_CUT = 62
+
+	# degrees = g.degree_property_map('total')
+	# top_degree = max(degrees.get_array())
+	# sorted_degrees = get_sorted(degrees.get_array(), normalization_factor=top_degree)
+	# top_degrees = ','.join(('%s:%.5f') %(GT_to_congressmen[ t[0] ],t[1]) \
+	# 									 for t in sorted_degrees[:N_CUT])
+	# print 'Top ' + str(N_CUT) + ' degrees: ' + top_degrees
+
+	betweennesses = betweenness(g, weight=weights)
+	sorted_betweennesses = get_sorted(betweennesses[0].get_array())
+	top_betweennesses = ','.join(('%s:%.5f') %(GT_to_congressmen[ t[0] ],t[1]) \
+											   for t in sorted_betweennesses[:N_CUT])
+	print 'Top ' + str(N_CUT) + ' betweennesses: ' + top_betweennesses
+
+	# closenesses = closeness(g, weight=weights)
+	# sorted_closenesses = get_sorted(closenesses.get_array())
+	# sorted_closenesses = filter(lambda x: x[1]==x[1], sorted_closenesses) # Filter out NaN (x==x catches it)
+	# top_closenesses = ','.join(('%s:%.5f') %(GT_to_congressmen[ t[0] ],t[1]) \
+	# 										 for t in sorted_closenesses[:N_CUT])
+	# print 'Top ' + str(N_CUT) + ' closenesses: ' + top_closenesses
+
+	# katzes = katz(g, weight=weights)
+	# sorted_katzes = get_sorted(katzes.get_array())
+	# top_katzes = ','.join(('%s:%.5f') %(GT_to_congressmen[ t[0] ],t[1]) \
+	# 									for t in sorted_katzes[:N_CUT])
+	# print 'Top ' + str(N_CUT) + ' Katz: ' + top_katzes
+
+	# pageranks = pagerank(g, weight=weights)
+	# sorted_pageranks = get_sorted(pageranks.get_array())
+	# top_pageranks = ','.join(('%s:%.5f') %(GT_to_congressmen[ t[0] ],t[1]) \
+	# 									   for t in sorted_pageranks[:N_CUT])
+	# print 'Top %s pageranks: %s' %(N_CUT, top_pageranks)
+
+
+def community_detection(g, weights, GT_to_congressmen):
+	spins = community_structure(g, 10000, 20, gamma=0.7, t_range=(5.0, 0.01), weight=weights)
+	communities = dict()
+	for i, c in enumerate(spins.get_array()):
+		if c not in communities:
+			communities[c] = list()
+
+		congressman = GT_to_congressmen[i]
+		communities[c].append(congressman)
+	print communities
+
+
 if not os.path.exists('codonators_net.p') and not os.path.exists('covoting_net.p'):
 	n4jp = Neo4jPersistence()
 	n4jp.createCoVotingNetwork()
 	n4jp.createCoDonatorsNetwork()
 
 
-g = Graph()
 congressmen_to_GT = dict()
 GT_to_congressmen = dict()
 
@@ -96,7 +154,10 @@ for PICKLE_FILE in [ 'covoting_net.p', 'codonators_net.p' ]:
 	print '* %s' %PICKLE_FILE
 	print '****************'
 
-	with open('codonators_net.p') as f_codonators:
+	g = Graph()
+	weights = g.new_edge_property('double')
+
+	with open(PICKLE_FILE) as f_codonators:
 		for record in pickle.load(f_codonators):
 			# print record
 
@@ -114,7 +175,9 @@ for PICKLE_FILE in [ 'covoting_net.p', 'codonators_net.p' ]:
 				congressmen_to_GT[c2] = GT_id
 				GT_to_congressmen[GT_id] = c2
 
-			g.add_edge(congressmen_to_GT[c1], congressmen_to_GT[c2], record[2])
+			e = g.add_edge(congressmen_to_GT[c1], congressmen_to_GT[c2])
+			weights[e] = record[2]
+
 
 		vertices_count = g.num_vertices()
 		print 'Number of vertices: %s' %vertices_count
@@ -127,11 +190,11 @@ for PICKLE_FILE in [ 'covoting_net.p', 'codonators_net.p' ]:
 		density = density / float( vertices_count * (vertices_count - 1) )
 		print 'Density is: %s' %density
 
-		vertex_deg_hist = vertex_hist(g, 'total')
+		vertex_deg_hist = vertex_hist(g, 'in')
 		vertex_deg_values = vertex_deg_hist[1]
 		print 'Maximum degree is: %s' %max(vertex_deg_values)
 		print 'Minimum degree is: %s' %min(vertex_deg_values)
-		print 'Average degree is: %s' %vertex_average(g, 'total')[0]
+		print 'Average degree is: %s' %vertex_average(g, 'in')[0]
 
 		components = label_components(g)[1]
 		components_count = len(components)
@@ -156,18 +219,6 @@ for PICKLE_FILE in [ 'covoting_net.p', 'codonators_net.p' ]:
 		diameter = pseudo_diameter(g)
 		print 'Pseudo diameter is: %s' %(diameter[0])
 
+		# top_centralities(g, weights, GT_to_congressmen)
+		community_detection(g, weights, GT_to_congressmen)
 
-# def get_sorted(values_array, normalization_factor=None):
-# 	values_dict = dict()
-# 	for i,value in enumerate(values_array):
-# 		if not normalization_factor:
-# 			values_dict[i] = value
-# 		else:
-# 			values_dict[i] = value / float(normalization_factor)
-# 	return sorted(values_dict.items(), key=lambda x: x[1], reverse=True)
-
-
-# betweennesses = betweenness(g)
-# sorted_betweennesses = get_sorted(betweennesses[0].get_array())
-# top_betweennesses = ','.join(('%s:%.5f') %(GT_to_congressmen[ t[0] ],t[1]) for t in sorted_betweennesses[:50])
-# print top_betweennesses
